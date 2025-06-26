@@ -1,14 +1,10 @@
 import './token.dart';
 import './lexer.pos.dart';
 
-// import 'dart:collection';
-// import 'dart:io';
-
 class Lexer {
     Lexer(this.source);
     final String source;
-    var pos = LexerPosition();
-    //int index = 0, line = 1, column = 0;
+    final pos = LexerPosition();
     List<String> errors = [];
 
     final Map<String, TokenType> tokenTypeMap = {
