@@ -20,8 +20,10 @@ class Lexer {
         if (shouldLexWhiteSpace()) return lexWhiteSpace();
         if (shouldLexMultiLineComment()) return lexMultiLineComment();
         if (shouldLexSingleLineComment()) return lexSingleLineComment();
-        if (shouldLexDelimites()) return lexDelimiters();
-        return Token(TokenType.Error, "this shouldn't happen");
+        if (shouldLexDelimiters()) return lexDelimiters();
+        if (shouldLexIdentifier()) return lexIdentifier();
+        pos.advance(1);
+        return addError("idk what (${source[pos.index]}) at ${pos.line} ${pos.column}");
     }
 
     bool shouldLexWhiteSpace() => source[pos.index].isWhiteSpace();
@@ -32,16 +34,29 @@ class Lexer {
             pos.advance(1);
             if (ch == "\n") pos.nextLine();
         }
-        
-        return Token(TokenType.White, "" /*source.substring(i, pos.index)*/);
+        return Token(TokenType.White, "");
     }
 
-    bool shouldLexDelimites() => tokenTypeMap.containsKey(source[pos.index]);
+    bool shouldLexDelimiters() => tokenTypeMap.containsKey(source[pos.index]);
 
     Token lexDelimiters() {
         String ch = source[pos.index];
         pos.advance(ch.length);
         return Token(tokenTypeMap[ch]!, ch);
+    }
+
+    bool shouldLexIdentifier() {
+        String ch = source[pos.index];
+        return ch.isAlpha() || ch == "_";
+    }
+
+    Token lexIdentifier() {
+        var index = pos.index;
+        pos.advance(1);
+        while (source.canIndex(pos) && source[pos.index].isAlphaNumericOrUnderscore()) {
+            pos.advance(1);
+        }
+        return Token(TokenType.Ident, source.substring(index, pos.index));
     }
 
     bool shouldLexSingleLineComment() => source[pos.index] == '#';
@@ -59,7 +74,7 @@ class Lexer {
     }
     
     Token lexMultiLineComment() {
-        //print("\x1b[1;34m\x1b[1;41mNOT DONE\x1b[1;39m\x1b[1;49m");
+        var startPos = pos.clone();
         pos.advance(2);
         int level = 1;
         while (source.canIndex(pos, 1) && level != 0) {
@@ -71,13 +86,21 @@ class Lexer {
             if (ch.isNewLine()) pos.nextLine();
         }
         pos.advance(2);
-        if (level != 0) return Token(TokenType.Error, "unclosed comment here");
-        return Token(TokenType.Comment, "1");
+        if (level != 0) return addError("Unclosed comment at ${startPos.line} ${startPos.column}");
+        return Token(TokenType.Comment, "");
     }
+
+    Token addError(String error) {
+        errors.add(error);
+        return Token(TokenType.Error, error);
+    }
+
+    bool hasErrors() => errors.length > 0;
 }
 
+
 void main() {
-    var l = Lexer("    #foo \n{#[  \n]#\r\t{{{..;;}}}");
+    var l = Lexer("123#[    #foo \n{#[  \n]#\r\t{{{..;;}}}");
     while (l.pos.index < l.source.length) {
         var t = l.next();
         print("Type: ${t.type}");
@@ -88,13 +111,23 @@ void main() {
 
 extension StringUtils on String {
     bool canIndex(LexerPosition pos, [int offset = 0]) => pos.index + offset < this.length;
+
     bool isWhiteSpace() => this.trim().isEmpty;
-    String? safeIndex(int index) {
-        final runes = this.runes.toList();
-        if (index < 0 || index >= runes.length) return null;
-        return String.fromCharCode(runes[index]);
-    }
+
     bool isNewLine() => this == "\n";
+
+    bool isAlpha() {
+        int code = this.codeUnitAt(0);
+        return (code >= 65 && code <= 90) || // A-Z
+            (code >= 97 && code <= 122); // a-z
+    }
+
+    bool isDigit() {
+        int code = this.codeUnitAt(0);
+        return code >= 48 && code <= 57; // ASCII codes for '0' to '9'
+    }
+
+    bool isAlphaNumericOrUnderscore() => this.isAlpha() || this.isDigit() || this == "_";
 }
 
 /*
