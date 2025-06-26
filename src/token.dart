@@ -8,6 +8,7 @@ enum TokenType {
     String,    
     Ident,
 
+    EOF,
     Error,
 
     // ignored by parser
