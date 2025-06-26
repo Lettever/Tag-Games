@@ -192,29 +192,3 @@ extension StringUtils on String {
     int Function(int, int) multiply = (int a, int b) => a * b;
     print(multiply(4, 5)); // 20
  */
-
-/*
-Token lexStringLiteral(String input) {
-      var nextCh = input[i + 1];
-      switch (nextCh) {
-        case 'n': buf.write('\n'); break;
-        case 't': buf.write('\t'); break;
-        case '"': buf.write('"'); break;
-        case "'": buf.write("'"); break;
-        case '\\': buf.write('\\'); break;
-        default:
-          return Token(TokenType.Error, 'Invalid escape: \\$nextCh');
-      }
-      i += 2;
-    } else if (input[i] == quote) {
-      if (i != input.length - 1)
-        return Token(TokenType.Error, 'Extra characters after closing quote');
-      return Token(TokenType.String, buf.toString());
-    } else {
-      buf.write(input[i]);
-      i += 1;
-    }
-  }
-  return Token(TokenType.Error, 'Unclosed string literal');
-}
-*/
