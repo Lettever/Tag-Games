@@ -1,6 +1,8 @@
 import './token.dart';
 import './lexer.pos.dart';
 
+import 'dart:io';
+
 class Lexer {
     Lexer(this.source);
     final String source;
@@ -22,8 +24,48 @@ class Lexer {
         if (shouldLexSingleLineComment()) return lexSingleLineComment();
         if (shouldLexDelimiters()) return lexDelimiters();
         if (shouldLexIdentifier()) return lexIdentifier();
+        if (shouldLexString()) return lexString();
+        String error = "Invalid token (${source[pos.index]}) at: line = ${pos.line} column = ${pos.column}";
         pos.advance(1);
-        return addError("idk what (${source[pos.index]}) at ${pos.line} ${pos.column}");
+        return addError(error);
+    }
+
+    bool shouldLexString() {
+        String ch = source[pos.index];
+        return ch == '"' || ch == "'";
+    }
+
+    Token lexString() {
+        int start = pos.index;
+        String quote = source[pos.index];
+        pos.advance(1);
+        StringBuffer buffer = StringBuffer();
+        Map<String, String> escapes = {
+            'n': '\n',
+            't': '\t',
+            '"': '"',
+            "'": "'",
+            '\\': '\\',
+        };
+
+        while (source.canIndex(pos)) {
+            String ch = source[pos.index];
+            if (ch == '\\') {
+                if (!source.canIndex(pos, 1)) break;
+                String nextCh = source[pos.index + 1];
+                print(nextCh);
+                if (escapes.containsKey(nextCh)) buffer.write(escapes[nextCh]!);
+                else return Token(TokenType.Error, 'Invalid escape: \\$nextCh');
+                pos.advance(2);
+                continue;
+            }
+            if (ch == quote) break;
+            buffer.write(ch);
+            pos.advance(1);
+        }
+        pos.advance(1);
+        if (pos.index >= source.length) return addError('Unclosed string literal starting at index $start');
+        return Token(TokenType.String, buffer.toString());
     }
 
     bool shouldLexWhiteSpace() => source[pos.index].isWhiteSpace();
@@ -32,7 +74,7 @@ class Lexer {
         while (source.canIndex(pos) && shouldLexWhiteSpace()) {
             String ch = source[pos.index];
             pos.advance(1);
-            if (ch == "\n") pos.nextLine();
+            if (ch.isNewLine()) pos.nextLine();
         }
         return Token(TokenType.White, "");
     }
@@ -51,7 +93,7 @@ class Lexer {
     }
 
     Token lexIdentifier() {
-        var index = pos.index;
+        int index = pos.index;
         pos.advance(1);
         while (source.canIndex(pos) && source[pos.index].isAlphaNumericOrUnderscore()) {
             pos.advance(1);
@@ -100,13 +142,20 @@ class Lexer {
 
 
 void main() {
-    var l = Lexer("123#[    #foo \n{#[  \n]#\r\t{{{..;;}}}");
+    String str = "a123    #foo\na \n{#[#[  \n]#\r\t{{{..;;}}}";
+    str = File("../examples/ex1.tg").readAsStringSync();
+    var l = Lexer(str);
+    print(str);
+    print("");
     while (l.pos.index < l.source.length) {
         var t = l.next();
+        if (t.type == TokenType.Comment || t.type == TokenType.White) continue;
         print("Type: ${t.type}");
         print("Span: ${t.span}");
-        print("");
+        print(">> ");
+        stdin.readLineSync();
     }
+    print(l.errors);
 }
 
 extension StringUtils on String {
@@ -143,3 +192,29 @@ extension StringUtils on String {
     int Function(int, int) multiply = (int a, int b) => a * b;
     print(multiply(4, 5)); // 20
  */
+
+/*
+Token lexStringLiteral(String input) {
+      var nextCh = input[i + 1];
+      switch (nextCh) {
+        case 'n': buf.write('\n'); break;
+        case 't': buf.write('\t'); break;
+        case '"': buf.write('"'); break;
+        case "'": buf.write("'"); break;
+        case '\\': buf.write('\\'); break;
+        default:
+          return Token(TokenType.Error, 'Invalid escape: \\$nextCh');
+      }
+      i += 2;
+    } else if (input[i] == quote) {
+      if (i != input.length - 1)
+        return Token(TokenType.Error, 'Extra characters after closing quote');
+      return Token(TokenType.String, buf.toString());
+    } else {
+      buf.write(input[i]);
+      i += 1;
+    }
+  }
+  return Token(TokenType.Error, 'Unclosed string literal');
+}
+*/
