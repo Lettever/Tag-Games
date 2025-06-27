@@ -21,8 +21,10 @@ class Token {
     final String span;
     Token(this.type, this.span);
 
-    String getSpan() {
-        if (type == TokenType.String) return span.substring(1, span.length - 1);
-        return span; 
-    }
+    @override
+    String toString() => "type: ${type}, span: $span";
+
+    bool shouldParserSkip() => type == TokenType.Comment || type == TokenType.White;
+
+    bool canBeAName() => type == TokenType.String || type == TokenType.Ident;
 }

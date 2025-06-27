@@ -17,6 +17,18 @@ class Lexer {
         "}": TokenType.R_Bracket,
     };
 
+    List<Token> collect() {
+        //Token t = next();
+        List<Token> res = [];
+
+        for (Token t = next(); t.type != TokenType.EOF; t = next()) { 
+            if (t.shouldParserSkip() || t.type == TokenType.Error) continue;
+            res.add(t);
+        }
+
+        return res;
+    }
+
     Token next() {
         if (!source.canIndex(pos)) return Token(TokenType.EOF, "");
         if (shouldLexWhiteSpace()) return lexWhiteSpace();
