@@ -1,5 +1,6 @@
 import './token.dart';
 import './lexer.pos.dart';
+import './lexer.error.dart';
 
 import 'dart:io';
 
@@ -8,6 +9,7 @@ class Lexer {
     final String source;
     final pos = LexerPosition();
     List<String> errors = [];
+    List<LexerError> errors2 = [];
 
     final Map<String, TokenType> tokenTypeMap = {
         "=": TokenType.Equals,
@@ -18,7 +20,6 @@ class Lexer {
     };
 
     List<Token> collect() {
-        //Token t = next();
         List<Token> res = [];
 
         for (Token t = next(); t.type != TokenType.EOF; t = next()) { 
@@ -31,12 +32,14 @@ class Lexer {
 
     Token next() {
         if (!source.canIndex(pos)) return Token(TokenType.EOF, "");
+
         if (shouldLexWhiteSpace()) return lexWhiteSpace();
         if (shouldLexMultiLineComment()) return lexMultiLineComment();
         if (shouldLexSingleLineComment()) return lexSingleLineComment();
         if (shouldLexDelimiters()) return lexDelimiters();
         if (shouldLexIdentifier()) return lexIdentifier();
         if (shouldLexString()) return lexString();
+        
         String error = "Invalid token (${source[pos.index]}) at: line = ${pos.line} column = ${pos.column}";
         pos.advance(1);
         return addError(error);
@@ -50,7 +53,6 @@ class Lexer {
     Token lexString() {
         int start = pos.index;
         String quote = source[pos.index];
-        pos.advance(1);
         StringBuffer buffer = StringBuffer();
         Map<String, String> escapes = {
             'n': '\n',
@@ -59,7 +61,8 @@ class Lexer {
             "'": "'",
             '\\': '\\',
         };
-
+        pos.advance(1);
+        
         while (source.canIndex(pos)) {
             String ch = source[pos.index];
             if (ch == '\\') {
@@ -107,9 +110,11 @@ class Lexer {
     Token lexIdentifier() {
         int index = pos.index;
         pos.advance(1);
+
         while (source.canIndex(pos) && source[pos.index].isAlphaNumericOrUnderscore()) {
             pos.advance(1);
         }
+
         return Token(TokenType.Ident, source.substring(index, pos.index));
     }
 
@@ -147,6 +152,12 @@ class Lexer {
     Token addError(String error) {
         errors.add(error);
         return Token(TokenType.Error, error);
+    }
+
+    Token addError2(LexerErrorType type, LexerPosition pos, [String? idk]) {
+        idk ??= "";
+        errors2.add(LexerError(type, pos, idk));
+        return Token(TokenType.Error, "");
     }
 
     bool hasErrors() => errors.length > 0;
