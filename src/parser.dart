@@ -12,6 +12,8 @@ import './lexer.dart';
 import './token.dart';
 import '../utils/resultType.dart';
 
+import 'dart:io';
+
 class Parser {
     final List<Token> tokens;
     int i = 0;
@@ -157,7 +159,8 @@ class Parser {
 
 void main() {
     print("hi");
-    String src = "foo = a ; a = a10;";
+    String src = File("../examples/ex1.tg").readAsStringSync(); //"foo = a ; a = a10;";
+    print(src);
     var tokens = Lexer(src).collect();
     for (var t in tokens) print(t);
     var pa = Parser(tokens);
