@@ -53,14 +53,15 @@ class Parser {
     }
 
     Result<Name, String> parseName() {
-        if (_current.canBeAName()) {
+
+        if (!_atEnd && _current.canBeAName()) {
             Token token = consume().value;
             return Result.ok(Name(token.span));
         }
         return Result.err('Expected identifier or string, found ${_current.type}');
     }
 
-    bool shouldParseTypedBlock() => _current.canBeAName() &&
+    bool shouldParseTypedBlock() => !_atEnd && _current.canBeAName() &&
         peek(1)?.type == TokenType.Dot &&
         peek(2)?.type == TokenType.L_Bracket;
 
@@ -77,7 +78,7 @@ class Parser {
         return Result.ok(TypedBlock(nameResult.value, blockResult.value));
     }
 
-    bool shouldParseMemberAccess() => _current.canBeAName() &&
+    bool shouldParseMemberAccess() => !_atEnd &&  _current.canBeAName() &&
         peek(1)?.type == TokenType.Dot &&
         (peek(2)?.canBeAName() ?? false);
 
@@ -86,7 +87,7 @@ class Parser {
         final rootResult = parseName();
         if (rootResult.isErr()) return Result.err(rootResult.error);
         final members = <Name>[];
-        while (_current.type == TokenType.Dot) {
+        while (!_atEnd && _current.type == TokenType.Dot) {
             consume();
             
             final memberResult = parseName();
@@ -97,14 +98,14 @@ class Parser {
         return Result.ok(MemberAccess(rootResult.value, members));
     }
 
-    bool shouldParseBlock() => _current.type == TokenType.L_Bracket;
+    bool shouldParseBlock() => !_atEnd &&  _current.type == TokenType.L_Bracket;
 
     Result<Block, String> parseBlock() {
         final lbrace = consume(TokenType.L_Bracket);
         if (lbrace.isErr()) return Result.err(lbrace.error);
 
         final values = <Value>[];
-        while (_current.type != TokenType.R_Bracket && !_atEnd) {
+        while (!_atEnd && _current.type != TokenType.R_Bracket && !_atEnd) {
             final valueResult = parseValue();
             if (valueResult.isErr()) return Result.err(valueResult.error);
             values.add(valueResult.value);
@@ -116,7 +117,7 @@ class Parser {
         return Result.ok(Block(values));
     }
 
-    bool shouldParseName() => _current.canBeAName();
+    bool shouldParseName() => !_atEnd && _current.canBeAName();
 
     Result<Value, String> parseValue() {
         if (shouldParseTypedBlock()) return parseTypedBlock();
@@ -129,7 +130,7 @@ class Parser {
 
     Result<Value, String> parseValueSequence({Set<TokenType> endTokens = const {TokenType.SemiColon, TokenType.R_Bracket}}) {
         final values = <Value>[];
-        while (!endTokens.contains(_current.type) && !_atEnd) {
+        while (!_atEnd && !endTokens.contains(_current.type)) {
             final valueResult = parseValue();
             if (valueResult.isErr()) return Result.err(valueResult.error);
             values.add(valueResult.value);
@@ -156,45 +157,46 @@ class Parser {
 
 void main() {
     print("hi");
-    String src = "foo = a b;";
+    String src = "foo = a ; a = a10;";
     var tokens = Lexer(src).collect();
     for (var t in tokens) print(t);
     var pa = Parser(tokens);
     var po = pa.parseProgram();
     print("po.isOk(): ${po.isOk()}");
-    if (po.isOk()) printAst(po.value[0]);
+    if (po.isOk()) for (var elem in po.value) printAst(elem);
     else print(po.error);
+    
 }
 
 void printAst(AstNode node, [int indent = 0]) {
-  final space = '  ' * indent;
-  if (node is Assignment) {
-    print('${space}Assignment:');
-    print('${space}  Name: ${node.name}');
-    print('${space}  Value:');
-    printAst(node.value, indent + 2);
-  } else if (node is TypedBlock) {
-    print('${space}TypedBlock:');
-    print('${space}  Name: ${node.name}');
-    print('${space}  Block:');
-    printAst(node.block, indent + 2);
-  } else if (node is Block) {
-    print('${space}Block:');
-    for (var v in node.values) {
-      printAst(v, indent + 1);
-    }
-  } else if (node is MemberAccess) {
-    print('${space}MemberAccess:');
-    print('${space}  Root: ${node.root}');
+    final space = '  ' * indent;
+    if (node is Assignment) {
+        print('${space}Assignment:');
+        print('${space}  Name: ${node.name}');
+        print('${space}  Value:');
+        printAst(node.value, indent + 2);
+    } else if (node is TypedBlock) {
+        print('${space}TypedBlock:');
+        print('${space}  Name: ${node.name}');
+        print('${space}  Block:');
+        printAst(node.block, indent + 2);
+    } else if (node is Block) {
+        print('${space}Block:');
+        for (var v in node.values) {
+            printAst(v, indent + 1);
+        }
+    } else if (node is MemberAccess) {
+        print('${space}MemberAccess:');
+        print('${space}  Root: ${node.root}');
     if (node.members.isNotEmpty) {
-      print('${space}  Members:');
-      for (var m in node.members) {
-        print('${space}    $m');
-      }
+        print('${space}  Members:');
+        for (var m in node.members) {
+            print('${space}    $m');
+        }
     }
-  } else if (node is Name) {
-    print('${space}Name: ${node.name}');
-  } else {
-    print('${space}Unknown AST node');
-  }
+    } else if (node is Name) {
+        print('${space}Name: ${node.name}');
+    } else {
+        print('${space}Unknown AST node');
+    }
 }
