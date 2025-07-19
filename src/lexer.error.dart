@@ -8,10 +8,10 @@ enum LexerErrorType {
 }
 
 class LexerError {
-    LexerError(this.type, this.pos, [this.idk]);
+    LexerError(this.type, this.pos, [this.extraInfo]);
     final LexerErrorType type;
     final LexerPosition pos;
-    String? idk;
+    String? extraInfo;
 }
 
 /*

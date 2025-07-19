@@ -8,8 +8,7 @@ class Lexer {
     Lexer(this.source);
     final String source;
     final pos = LexerPosition();
-    List<String> errors = [];
-    List<LexerError> errors2 = [];
+    List<LexerError> errors = [];
 
     final Map<String, TokenType> tokenTypeMap = {
         "=": TokenType.Equals,
@@ -31,7 +30,7 @@ class Lexer {
     }
 
     Token next() {
-        if (!source.canIndex(pos)) return Token(TokenType.EOF, "");
+        if (!source.canIndex(pos)) return Token(TokenType.EOF, "", pos.clone());
 
         if (shouldLexWhiteSpace()) return lexWhiteSpace();
         if (shouldLexMultiLineComment()) return lexMultiLineComment();
@@ -40,9 +39,9 @@ class Lexer {
         if (shouldLexIdentifier()) return lexIdentifier();
         if (shouldLexString()) return lexString();
         
-        String error = "Invalid token (${source[pos.index]}) at: line = ${pos.line} column = ${pos.column}";
+        var errorPos = pos.clone();
         pos.advance(1);
-        return addError(error);
+        return addError(LexerErrorType.InvalidToken, errorPos: errorPos, extraInfo: source[errorPos.index]);
     }
 
     bool shouldLexString() {
@@ -51,7 +50,7 @@ class Lexer {
     }
 
     Token lexString() {
-        int start = pos.index;
+        var startPos = pos.clone();
         String quote = source[pos.index];
         StringBuffer buffer = StringBuffer();
         Map<String, String> escapes = {
@@ -70,7 +69,7 @@ class Lexer {
                 String nextCh = source[pos.index + 1];
                 print(nextCh);
                 if (escapes.containsKey(nextCh)) buffer.write(escapes[nextCh]!);
-                else return Token(TokenType.Error, 'Invalid escape: \\$nextCh');
+                else return addError(LexerErrorType.InvalidEscapeCharacter, errorPos: pos.clone(), extraInfo: nextCh);
                 pos.advance(2);
                 continue;
             }
@@ -79,27 +78,29 @@ class Lexer {
             pos.advance(1);
         }
         pos.advance(1);
-        if (pos.index >= source.length) return addError('Unclosed string literal starting at index $start');
-        return Token(TokenType.String, buffer.toString());
+        if (pos.index >= source.length) return addError(LexerErrorType.UnclosedString, errorPos: startPos);
+        return Token(TokenType.String, buffer.toString(), startPos);
     }
 
     bool shouldLexWhiteSpace() => source[pos.index].isWhiteSpace();
 
     Token lexWhiteSpace() {
+        var startPos = pos.clone();
         while (source.canIndex(pos) && shouldLexWhiteSpace()) {
             String ch = source[pos.index];
             pos.advance(1);
             if (ch.isNewLine()) pos.nextLine();
         }
-        return Token(TokenType.White, "");
+        return Token(TokenType.White, "", startPos);
     }
 
     bool shouldLexDelimiters() => tokenTypeMap.containsKey(source[pos.index]);
 
     Token lexDelimiters() {
+        var startPos = pos.clone();
         String ch = source[pos.index];
         pos.advance(ch.length);
-        return Token(tokenTypeMap[ch]!, ch);
+        return Token(tokenTypeMap[ch]!, ch, startPos);
     }
 
     bool shouldLexIdentifier() {
@@ -108,23 +109,23 @@ class Lexer {
     }
 
     Token lexIdentifier() {
-        int index = pos.index;
+        var startPos = pos.clone();
         pos.advance(1);
-
         while (source.canIndex(pos) && source[pos.index].isAlphaNumericOrUnderscore()) {
             pos.advance(1);
         }
 
-        return Token(TokenType.Ident, source.substring(index, pos.index));
+        return Token(TokenType.Ident, source.substring(startPos.index, pos.index), startPos);
     }
 
     bool shouldLexSingleLineComment() => source[pos.index] == '#';
 
     Token lexSingleLineComment() {
+        var startPos = pos.clone();
         while (source.canIndex(pos) && !source[pos.index].isNewLine()) pos.advance(1);
         pos.advance(1);
         pos.nextLine();
-        return Token(TokenType.Comment, "");
+        return Token(TokenType.Comment, "", startPos);
     }
     
     bool shouldLexMultiLineComment() {
@@ -145,31 +146,26 @@ class Lexer {
             if (ch.isNewLine()) pos.nextLine();
         }
         pos.advance(2);
-        if (level != 0) return addError("Unclosed comment at ${startPos.line} ${startPos.column}");
-        return Token(TokenType.Comment, "");
+        if (level != 0) return addError(LexerErrorType.UnclosedComment, errorPos: startPos);
+        return Token(TokenType.Comment, "", startPos);    
     }
 
-    Token addError(String error) {
-        errors.add(error);
-        return Token(TokenType.Error, error);
-    }
-
-    Token addError2(LexerErrorType type, LexerPosition pos, [String? idk]) {
-        idk ??= "";
-        errors2.add(LexerError(type, pos, idk));
-        return Token(TokenType.Error, "");
+    Token addError(LexerErrorType errorType, { LexerPosition? errorPos, String? extraInfo }) {
+        if (errorPos == null) errorPos = pos.clone();
+        errors.add(LexerError(errorType, errorPos, extraInfo));
+        return Token(TokenType.Error, "", errorPos);
     }
 
     bool hasErrors() => errors.length > 0;
 }
 
-
 void main() {
-    String str = "a123    #foo\na \n{#[#[  \n]#\r\t{{{..;;}}}";
-    str = File("../examples/ex1.tg").readAsStringSync();
+    String str = File("../examples/ex1.tg").readAsStringSync();
     var l = Lexer(str);
     print(str);
     print("");
+    
+
     while (l.pos.index < l.source.length) {
         var t = l.next();
         if (t.type == TokenType.Comment || t.type == TokenType.White) continue;
@@ -178,6 +174,7 @@ void main() {
         print(">> ");
         stdin.readLineSync();
     }
+    
     print(l.errors);
 }
 

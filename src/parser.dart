@@ -55,7 +55,6 @@ class Parser {
     }
 
     Result<Name, String> parseName() {
-
         if (!_atEnd && _current.canBeAName()) {
             Token token = consume().value;
             return Result.ok(Name(token.span));
@@ -159,7 +158,7 @@ class Parser {
 
 void main() {
     print("hi");
-    String src = File("../examples/ex1.tg").readAsStringSync(); //"foo = a ; a = a10;";
+    String src = File("../examples/ex1.tg").readAsStringSync();
     print(src);
     var tokens = Lexer(src).collect();
     for (var t in tokens) print(t);
