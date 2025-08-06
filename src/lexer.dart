@@ -21,8 +21,8 @@ class Lexer {
     List<Token> collect() {
         List<Token> res = [];
 
-        for (Token t = next(); t.type != TokenType.EOF; t = next()) { 
-            if (t.shouldParserSkip() || t.type == TokenType.Error) continue;
+        for (Token t = next(); t.type != TokenType.EOF; t = next()) {
+            if (t.shouldLexerSkip()) continue;
             res.add(t);
         }
 
@@ -67,7 +67,6 @@ class Lexer {
             if (ch == '\\') {
                 if (!source.canIndex(pos, 1)) break;
                 String nextCh = source[pos.index + 1];
-                print(nextCh);
                 if (escapes.containsKey(nextCh)) buffer.write(escapes[nextCh]!);
                 else return addError(LexerErrorType.InvalidEscapeCharacter, errorPos: pos.clone(), extraInfo: nextCh);
                 pos.advance(2);
@@ -85,13 +84,12 @@ class Lexer {
     bool shouldLexWhiteSpace() => source[pos.index].isWhiteSpace();
 
     Token lexWhiteSpace() {
-        var startPos = pos.clone();
         while (source.canIndex(pos) && shouldLexWhiteSpace()) {
             String ch = source[pos.index];
             pos.advance(1);
             if (ch.isNewLine()) pos.nextLine();
         }
-        return Token(TokenType.White, "", startPos);
+        return Token(TokenType.White, "", pos.clone());
     }
 
     bool shouldLexDelimiters() => tokenTypeMap.containsKey(source[pos.index]);

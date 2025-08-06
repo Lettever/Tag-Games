@@ -1,0 +1,1 @@
+Change parser to return an array of parser error instead of just a string

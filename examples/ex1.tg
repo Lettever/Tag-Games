@@ -5,3 +5,28 @@ bruh = ok;
 qwerty = poiu.  { 
     asdf zxcv fghj vbnm
 };
+
+
+#[
+Ultrakill = {
+    fps.hard
+    graphics.{
+        low_res
+        polygons
+    }
+}
+
+Ultrakill = {
+    fps.hard
+    graphics.low_res
+    graphics.polygons
+}
+
+[
+    "Ultrakill": {
+        "fps": ["hard"],
+        "graphics": ["low_res", "polygons"]
+    }
+]
+
+]#

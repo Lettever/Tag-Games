@@ -26,6 +26,6 @@ class Token {
 
     @override
     String toString() => "type: ${type}, span: $span";
-    bool shouldParserSkip() => type == TokenType.Comment || type == TokenType.White;
+    bool shouldLexerSkip() => type == TokenType.Comment || type == TokenType.White || type == TokenType.Error;
     bool canBeAName() => type == TokenType.String || type == TokenType.Ident;
 }

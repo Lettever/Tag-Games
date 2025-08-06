@@ -79,10 +79,10 @@ class Parser {
         return Result.ok(TypedBlock(nameResult.value, blockResult.value));
     }
 
-    bool shouldParseMemberAccess() => !_atEnd &&  _current.canBeAName() &&
+    bool shouldParseMemberAccess() => !_atEnd && _current.canBeAName() &&
         peek(1)?.type == TokenType.Dot &&
         (peek(2)?.canBeAName() ?? false);
-
+        //a.b.c.d.e.f
 
     Result<MemberAccess, String> parseMemberAccess() {
         final rootResult = parseName();

@@ -12,11 +12,14 @@ class LexerError {
     final LexerErrorType type;
     final LexerPosition pos;
     String? extraInfo;
-}
 
-/*
-Token(TokenType.Error, 'Invalid escape: \\$nextCh');
-addError('Unclosed string literal starting at index $start');
-addError("Unclosed comment at ${startPos.line} ${startPos.column}");
-"Invalid token (${source[pos.index]}) at: line = ${pos.line} column = ${pos.column}"
- */
+    @override
+    String toString() {
+        return switch (type) {
+            LexerErrorType.InvalidEscapeCharacter => "Invalid escape character (${extraInfo!})",
+            LexerErrorType.UnclosedString => "Unclosed String starting at line = ${pos.line} column = ${pos.column}",
+            LexerErrorType.UnclosedComment => "Unclosed comment starting at line = ${pos.line} column = ${pos.column}",
+            LexerErrorType.InvalidToken => "Invalid token ($extraInfo!) at: line = ${pos.line} column = ${pos.column}",
+        };
+    }
+}
