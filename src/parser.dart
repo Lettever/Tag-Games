@@ -30,10 +30,10 @@ class Parser {
     }
 
     Result<Token, ParserError> consume([TokenType? type]) {
-        if (_atEnd) return Result.err(UnexpectedEOF());
+        if (_atEnd) return Result.err(UnexpectedEOF(tokens.last.pos.clone()));
         final token = tokens[i];
         if (type != null && token.type != type) {
-            return Result.err(UnexpectedType(expected:  type, found: token.type));
+            return Result.err(UnexpectedType(token.pos.clone(), expected:  type, found: token.type));
         }
         i += 1;
         return Result.ok(token);
@@ -60,7 +60,7 @@ class Parser {
             Token token = consume().value;
             return Result.ok(Name(token.span));
         }
-        return Result.err(ExpectedName(_current.type));
+        return Result.err(ExpectedName(_current.pos.clone(), _current.type));
     }
 
     bool shouldParseTypedBlock() => !_atEnd && _current.canBeAName() &&
@@ -127,7 +127,7 @@ class Parser {
         if (shouldParseBlock()) return parseBlock();
         if (shouldParseName()) return parseName();
 
-        return Result.err(UnexpectedToken(_current.type));
+        return Result.err(UnexpectedToken(_current.pos.clone(), _current.type));
     }
 
     Result<Value, ParserError> parseValueSequence({Set<TokenType> endTokens = const {TokenType.SemiColon, TokenType.R_Bracket}}) {
@@ -138,7 +138,7 @@ class Parser {
             values.add(valueResult.value);
         }
         if (values.isEmpty) {
-            return Result.err(ExpectedValues(_current.type));
+            return Result.err(ExpectedValues(_current.pos.clone(), _current.type));
         }
         if (values.length == 1) {
             return Result.ok(values[0]);
