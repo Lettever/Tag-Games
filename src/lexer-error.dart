@@ -1,4 +1,4 @@
-import 'lexer.pos.dart';
+import './lexer-pos.dart';
 
 enum LexerErrorType {
     InvalidEscapeCharacter,
@@ -16,10 +16,10 @@ class LexerError {
     @override
     String toString() {
         return switch (type) {
-            LexerErrorType.InvalidEscapeCharacter => "Invalid escape character (${extraInfo!})",
+            LexerErrorType.InvalidEscapeCharacter => "Invalid escape character (${extraInfo!}) at line = ${pos.line} column = ${pos.column}",
             LexerErrorType.UnclosedString => "Unclosed String starting at line = ${pos.line} column = ${pos.column}",
             LexerErrorType.UnclosedComment => "Unclosed comment starting at line = ${pos.line} column = ${pos.column}",
-            LexerErrorType.InvalidToken => "Invalid token ($extraInfo!) at: line = ${pos.line} column = ${pos.column}",
+            LexerErrorType.InvalidToken => "Invalid token (${extraInfo!}) at: line = ${pos.line} column = ${pos.column}",
         };
     }
 }

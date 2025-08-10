@@ -1,6 +1,6 @@
 import './token.dart';
-import './lexer.pos.dart';
-import './lexer.error.dart';
+import './lexer-pos.dart';
+import './lexer-error.dart';
 
 import 'dart:io';
 
@@ -160,10 +160,7 @@ class Lexer {
 void main() {
     String str = File("../examples/ex1.tg").readAsStringSync();
     var l = Lexer(str);
-    print(str);
-    print("");
     
-
     while (l.pos.index < l.source.length) {
         var t = l.next();
         if (t.type == TokenType.Comment || t.type == TokenType.White) continue;

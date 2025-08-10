@@ -11,6 +11,7 @@ import './ast.dart';
 import './lexer.dart';
 import './token.dart';
 import '../utils/resultType.dart';
+import './parser-error.dart';
 
 import 'dart:io';
 
@@ -28,17 +29,17 @@ class Parser {
         return tokens[i + offset];
     }
 
-    Result<Token, String> consume([TokenType? type]) {
-        if (_atEnd) return Result.err('Unexpected end of input, expected $type');
+    Result<Token, ParserError> consume([TokenType? type]) {
+        if (_atEnd) return Result.err(UnexpectedEOF());
         final token = tokens[i];
         if (type != null && token.type != type) {
-            return Result.err('Expected $type, found ${token.type}');
+            return Result.err(UnexpectedType(expected:  type, found: token.type));
         }
         i += 1;
         return Result.ok(token);
     }
 
-    Result<Assignment, String> parseAssignment() {
+    Result<Assignment, ParserError> parseAssignment() {
         var nameResult = parseName();
         if (nameResult.isErr()) return Result.err(nameResult.error);
         
@@ -54,19 +55,19 @@ class Parser {
         return Result.ok(Assignment(nameResult.value, valueResult.value));
     }
 
-    Result<Name, String> parseName() {
+    Result<Name, ParserError> parseName() {
         if (!_atEnd && _current.canBeAName()) {
             Token token = consume().value;
             return Result.ok(Name(token.span));
         }
-        return Result.err('Expected identifier or string, found ${_current.type}');
+        return Result.err(ExpectedName(_current.type));
     }
 
     bool shouldParseTypedBlock() => !_atEnd && _current.canBeAName() &&
         peek(1)?.type == TokenType.Dot &&
         peek(2)?.type == TokenType.L_Bracket;
 
-    Result<TypedBlock, String> parseTypedBlock() {
+    Result<TypedBlock, ParserError> parseTypedBlock() {
         final nameResult = parseName();
         if (nameResult.isErr()) return Result.err(nameResult.error);
 
@@ -84,7 +85,7 @@ class Parser {
         (peek(2)?.canBeAName() ?? false);
         //a.b.c.d.e.f
 
-    Result<MemberAccess, String> parseMemberAccess() {
+    Result<MemberAccess, ParserError> parseMemberAccess() {
         final rootResult = parseName();
         if (rootResult.isErr()) return Result.err(rootResult.error);
         final members = <Name>[];
@@ -101,7 +102,7 @@ class Parser {
 
     bool shouldParseBlock() => !_atEnd &&  _current.type == TokenType.L_Bracket;
 
-    Result<Block, String> parseBlock() {
+    Result<Block, ParserError> parseBlock() {
         final lbrace = consume(TokenType.L_Bracket);
         if (lbrace.isErr()) return Result.err(lbrace.error);
 
@@ -120,16 +121,16 @@ class Parser {
 
     bool shouldParseName() => !_atEnd && _current.canBeAName();
 
-    Result<Value, String> parseValue() {
+    Result<Value, ParserError> parseValue() {
         if (shouldParseTypedBlock()) return parseTypedBlock();
         if (shouldParseMemberAccess()) return parseMemberAccess();
         if (shouldParseBlock()) return parseBlock();
         if (shouldParseName()) return parseName();
 
-        return Result.err('Unexpected token in value: ${_current.type}');
+        return Result.err(UnexpectedToken(_current.type));
     }
 
-    Result<Value, String> parseValueSequence({Set<TokenType> endTokens = const {TokenType.SemiColon, TokenType.R_Bracket}}) {
+    Result<Value, ParserError> parseValueSequence({Set<TokenType> endTokens = const {TokenType.SemiColon, TokenType.R_Bracket}}) {
         final values = <Value>[];
         while (!_atEnd && !endTokens.contains(_current.type)) {
             final valueResult = parseValue();
@@ -137,7 +138,7 @@ class Parser {
             values.add(valueResult.value);
         }
         if (values.isEmpty) {
-            return Result.err('Expected value(s) before ${_current.type}');
+            return Result.err(ExpectedValues(_current.type));
         }
         if (values.length == 1) {
             return Result.ok(values[0]);
@@ -145,12 +146,13 @@ class Parser {
         return Result.ok(Block(values));
     }
 
-    Result<List<Assignment>, String> parseProgram() {
+    Result<List<Assignment>, List<ParserError>> parseProgram() {
         final assignments = <Assignment>[];
+        final errors = <ParserError>[];
         while (!_atEnd) {
             final assignmentResult = parseAssignment();
-            if (assignmentResult.isErr()) return Result.err(assignmentResult.error);
-            assignments.add(assignmentResult.value);
+            if (assignmentResult.isErr()) errors.add(assignmentResult.error);
+            else assignments.add(assignmentResult.value);
         }
         return Result.ok(assignments);
     }

@@ -1,4 +1,4 @@
-import 'lexer.pos.dart';
+import 'lexer-pos.dart';
 
 enum TokenType {
     Equals,
