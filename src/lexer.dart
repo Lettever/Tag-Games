@@ -1,3 +1,4 @@
+import '../utils/resultType.dart';
 import './token.dart';
 import './lexer-pos.dart';
 import './lexer-error.dart';
@@ -8,7 +9,6 @@ class Lexer {
     Lexer(this.source);
     final String source;
     final pos = LexerPosition();
-    List<LexerError> errors = [];
 
     final Map<String, TokenType> tokenTypeMap = {
         "=": TokenType.Equals,
@@ -18,30 +18,42 @@ class Lexer {
         "}": TokenType.R_Bracket,
     };
 
-    List<Token> collect() {
-        List<Token> res = [];
+    Result<List<Token>, List<LexerError>> collect() {
+        var
+            tokens = <Token>[],
+            errors = <LexerError>[]
+        ;
 
-        for (Token t = next(); t.type != TokenType.EOF; t = next()) {
-            if (t.shouldLexerSkip()) continue;
-            res.add(t);
+        for (
+            Result<Token, LexerError> t = next();
+            t.isErr() || t.value.type != TokenType.EOF;
+            t = next()
+        ) {
+            if (t.isErr()) {
+                errors.add(t.error);
+                continue;
+            }
+            if (t.value.shouldLexerSkip()) continue;
+            tokens.add(t.value);
         }
 
-        return res;
+        if (errors.length > 0) return Result.err(errors);
+        return Result.ok(tokens);
     }
 
-    Token next() {
-        if (!source.canIndex(pos)) return Token(TokenType.EOF, "", pos.clone());
+    Result<Token, LexerError> next() {
+        if (!source.canIndex(pos)) return Result.ok(Token(TokenType.EOF, "", pos.clone()));
 
-        if (shouldLexWhiteSpace()) return lexWhiteSpace();
+        if (shouldLexWhiteSpace()) return Result.ok(lexWhiteSpace());
         if (shouldLexMultiLineComment()) return lexMultiLineComment();
-        if (shouldLexSingleLineComment()) return lexSingleLineComment();
-        if (shouldLexDelimiters()) return lexDelimiters();
-        if (shouldLexIdentifier()) return lexIdentifier();
+        if (shouldLexSingleLineComment()) return Result.ok(lexSingleLineComment());
+        if (shouldLexDelimiters()) return Result.ok(lexDelimiters());
+        if (shouldLexIdentifier()) return Result.ok(lexIdentifier());
         if (shouldLexString()) return lexString();
         
         var errorPos = pos.clone();
         pos.advance(1);
-        return addError(LexerErrorType.InvalidToken, errorPos: errorPos, extraInfo: source[errorPos.index]);
+        return Result.err(InvalidToken(errorPos, source[errorPos.index]));
     }
 
     bool shouldLexString() {
@@ -49,7 +61,7 @@ class Lexer {
         return ch == '"' || ch == "'";
     }
 
-    Token lexString() {
+    Result<Token, LexerError> lexString() {
         var startPos = pos.clone();
         String quote = source[pos.index];
         StringBuffer buffer = StringBuffer();
@@ -68,7 +80,7 @@ class Lexer {
                 if (!source.canIndex(pos, 1)) break;
                 String nextCh = source[pos.index + 1];
                 if (escapes.containsKey(nextCh)) buffer.write(escapes[nextCh]!);
-                else return addError(LexerErrorType.InvalidEscapeCharacter, errorPos: pos.clone(), extraInfo: nextCh);
+                else return Result.err(InvalidEscapeCharacter(pos.clone(), nextCh));
                 pos.advance(2);
                 continue;
             }
@@ -76,9 +88,9 @@ class Lexer {
             buffer.write(ch);
             pos.advance(1);
         }
+        if (pos.index >= source.length) return Result.err(UnclosedString(startPos));
         pos.advance(1);
-        if (pos.index >= source.length) return addError(LexerErrorType.UnclosedString, errorPos: startPos);
-        return Token(TokenType.String, buffer.toString(), startPos);
+        return Result.ok(Token(TokenType.String, buffer.toString(), startPos));
     }
 
     bool shouldLexWhiteSpace() => source[pos.index].isWhiteSpace();
@@ -131,7 +143,7 @@ class Lexer {
         return source.substring(pos.index, pos.index + 2) == "#[";
     }
     
-    Token lexMultiLineComment() {
+    Result<Token, LexerError> lexMultiLineComment() {
         var startPos = pos.clone();
         pos.advance(2);
         int level = 1;
@@ -144,17 +156,11 @@ class Lexer {
             if (ch.isNewLine()) pos.nextLine();
         }
         pos.advance(2);
-        if (level != 0) return addError(LexerErrorType.UnclosedComment, errorPos: startPos);
-        return Token(TokenType.Comment, "", startPos);    
+        if (level != 0) return Result.err(UnclosedComment(startPos));
+        return Result.ok(Token(TokenType.Comment, "", startPos));
     }
 
-    Token addError(LexerErrorType errorType, { LexerPosition? errorPos, String? extraInfo }) {
-        if (errorPos == null) errorPos = pos.clone();
-        errors.add(LexerError(errorType, errorPos, extraInfo));
-        return Token(TokenType.Error, "", errorPos);
-    }
-
-    bool hasErrors() => errors.length > 0;
+    //bool hasErrors() => errors.length > 0;
 }
 
 void main() {
@@ -162,7 +168,9 @@ void main() {
     var l = Lexer(str);
     
     while (l.pos.index < l.source.length) {
-        var t = l.next();
+        var t2 = l.next();
+        if (t2.isErr()) print(t2.error);
+        var t = t2.value;
         if (t.type == TokenType.Comment || t.type == TokenType.White) continue;
         print("Type: ${t.type}");
         print("Span: ${t.span}");
@@ -170,7 +178,6 @@ void main() {
         stdin.readLineSync();
     }
     
-    print(l.errors);
 }
 
 extension StringUtils on String {
@@ -188,7 +195,7 @@ extension StringUtils on String {
 
     bool isDigit() {
         int code = this.codeUnitAt(0);
-        return code >= 48 && code <= 57; // ASCII codes for '0' to '9'
+        return code >= 48 && code <= 57; // 0-9
     }
 
     bool isAlphaNumericOrUnderscore() => this.isAlpha() || this.isDigit() || this == "_";

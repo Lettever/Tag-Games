@@ -14,10 +14,9 @@ class LexerPosition {
     }
 
     LexerPosition clone() {
-        var l = LexerPosition();
-        l.index = this.index;
-        l.column = this.column;
-        l.line = this.line;
-        return l;
+        return LexerPosition()
+            ..index = this.index
+            ..column = this.column
+            ..line = this.line;
     }
 }

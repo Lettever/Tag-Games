@@ -1,25 +1,28 @@
 import './lexer-pos.dart';
 
-enum LexerErrorType {
-    InvalidEscapeCharacter,
-    UnclosedString,
-    UnclosedComment,
-    InvalidToken,
+sealed class LexerError {
+    final LexerPosition pos;
+    LexerError(this.pos);
 }
 
-class LexerError {
-    LexerError(this.type, this.pos, [this.extraInfo]);
-    final LexerErrorType type;
-    final LexerPosition pos;
-    String? extraInfo;
+class InvalidEscapeCharacter extends LexerError {
+    final String ch;
+    InvalidEscapeCharacter(LexerPosition pos, this.ch) : super(pos);
+    String toString() => "Invalid escape character ($ch) at line = ${pos.line}, column = ${pos.column}";
+}
 
-    @override
-    String toString() {
-        return switch (type) {
-            LexerErrorType.InvalidEscapeCharacter => "Invalid escape character (${extraInfo!}) at line = ${pos.line} column = ${pos.column}",
-            LexerErrorType.UnclosedString => "Unclosed String starting at line = ${pos.line} column = ${pos.column}",
-            LexerErrorType.UnclosedComment => "Unclosed comment starting at line = ${pos.line} column = ${pos.column}",
-            LexerErrorType.InvalidToken => "Invalid token (${extraInfo!}) at: line = ${pos.line} column = ${pos.column}",
-        };
-    }
+class UnclosedString extends LexerError {
+    UnclosedString(LexerPosition pos) : super(pos);
+    String toString() => "Unclosed String starting at line = ${pos.line}, column = ${pos.column}";
+}
+
+class UnclosedComment extends LexerError {
+    UnclosedComment(LexerPosition pos) : super(pos);
+    String toString() => "Unclosed comment starting at line = ${pos.line}, column = ${pos.column}";
+}
+
+class InvalidToken extends LexerError {
+    final String token;
+    InvalidToken(LexerPosition pos, this.token) : super(pos);
+    String toString() => "Invalid token ($token) at: line = ${pos.line}, column = ${pos.column}";
 }

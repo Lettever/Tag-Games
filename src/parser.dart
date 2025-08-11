@@ -76,6 +76,7 @@ class Parser {
 
         final blockResult = parseBlock();
         if (blockResult.isErr()) return Result.err(blockResult.error);
+        //print(blockResult.value);
 
         return Result.ok(TypedBlock(nameResult.value, blockResult.value));
     }
@@ -107,7 +108,7 @@ class Parser {
         if (lbrace.isErr()) return Result.err(lbrace.error);
 
         final values = <Value>[];
-        while (!_atEnd && _current.type != TokenType.R_Bracket && !_atEnd) {
+        while (!_atEnd && _current.type != TokenType.R_Bracket) {
             final valueResult = parseValue();
             if (valueResult.isErr()) return Result.err(valueResult.error);
             values.add(valueResult.value);
@@ -149,24 +150,28 @@ class Parser {
     Result<List<Assignment>, List<ParserError>> parseProgram() {
         final assignments = <Assignment>[];
         final errors = <ParserError>[];
+        
         while (!_atEnd) {
             final assignmentResult = parseAssignment();
             if (assignmentResult.isErr()) errors.add(assignmentResult.error);
             else assignments.add(assignmentResult.value);
         }
+
+        if (errors.length > 0) return Result.err(errors);
         return Result.ok(assignments);
     }
 }
 
 void main() {
-    print("hi");
-    String src = File("../examples/ex1.tg").readAsStringSync();
-    print(src);
+    String src = File("../examples/simple.tg").readAsStringSync();
     var tokens = Lexer(src).collect();
-    for (var t in tokens) print(t);
-    var pa = Parser(tokens);
-    var po = pa.parseProgram();
-    print("po.isOk(): ${po.isOk()}");
+    //print(tokens);
+    if (tokens.isErr()) {
+        print("Error");
+        print(tokens.error);
+        return;
+    }
+    var po = Parser(tokens.value).parseProgram();
     if (po.isOk()) for (var elem in po.value) printAst(elem);
     else print(po.error);
     
